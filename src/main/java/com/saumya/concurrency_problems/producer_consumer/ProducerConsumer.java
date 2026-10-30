@@ -1,6 +1,7 @@
 package com.saumya.concurrency_problems.producer_consumer;
 
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -15,12 +16,18 @@ public class ProducerConsumer<E> {
     private static final AtomicInteger counter = new AtomicInteger(1);
 
     public ProducerConsumer(int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Capacity must be positive");
+        }
         this.maxCapacity = capacity;
         this.queue = new LinkedList<>();
     }
 
     public void put(E item) throws InterruptedException {
-        lock.lock();
+        Objects.requireNonNull(item); // throws NullPointerException if item is null
+        lock.lockInterruptibly(); // so thread doesn't wait indefinitely if another thread holds the lock
+        // it throws InterruptedException if another thread interrupts it
+
         try {
             while(queue.size() == maxCapacity) {
                 notFull.await(); // blocks the producer thread
@@ -28,7 +35,7 @@ public class ProducerConsumer<E> {
                 // solution: use a while loop instead of if
             }
             queue.add(item);
-            notEmpty.signalAll();
+            notEmpty.signal();  // wakes up a waiting consumer thread
         } finally {
             lock.unlock();
         }
@@ -36,7 +43,7 @@ public class ProducerConsumer<E> {
     }
 
     public E get() throws InterruptedException {
-        lock.lock();
+        lock.lockInterruptibly();
         try {
             while(queue.isEmpty()) {
                 notEmpty.await();   // blocks the consumer thread
@@ -44,7 +51,7 @@ public class ProducerConsumer<E> {
                 // solution: use a while loop instead of if
             }
             E item = queue.poll();
-            notFull.signalAll();
+            notFull.signal(); // wakes up a waiting producer thread
             return item;
         } finally {
             lock.unlock();
