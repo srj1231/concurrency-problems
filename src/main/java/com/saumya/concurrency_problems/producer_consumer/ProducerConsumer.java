@@ -2,15 +2,17 @@ package com.saumya.concurrency_problems.producer_consumer;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ProducerConsumer<E> {
     private final Queue<E> queue;
-    private int maxCapacity = 16;
+    private final int maxCapacity;
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition notFull = lock.newCondition();
     private final Condition notEmpty = lock.newCondition();
+    private static final AtomicInteger counter = new AtomicInteger(1);
 
     public ProducerConsumer(int capacity) {
         this.maxCapacity = capacity;
@@ -47,5 +49,45 @@ public class ProducerConsumer<E> {
         } finally {
             lock.unlock();
         }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        ProducerConsumer<Integer> pc = new ProducerConsumer<>(3);
+
+        final Runnable producer = () -> {
+            while (true) {
+                try {
+                    int item = counter.getAndIncrement();
+                    System.out.println("Produced: " + item);
+                    pc.put(item);
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        };
+
+        new Thread(producer).start();
+        new Thread(producer).start();
+
+        final Runnable consumer = () -> {
+            while (true) {
+                try {
+                    Integer item = pc.get();
+                    System.out.println("Consumed: " + item);
+                    Thread.sleep(150);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        };
+
+        new Thread(consumer).start();
+        new Thread(consumer).start();
+
+        Thread.sleep(1000);
+        System.exit(0);
     }
 }
