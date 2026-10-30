@@ -8,6 +8,21 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Producer-Consumer pattern implementation using BlockingQueue.
  * Demonstrates thread-safe communication between producer and consumer threads
  * without explicit locks.
+
+ * We use a BlockingQueue to safely exchange data between multiple producer and consumer threads.
+ * If the queue is full, producers wait. If the queue is empty, consumers wait.
+ * This avoids busy waiting and gives us natural thread coordination.
+ * e.g. order processing system
+ * - Producers: API request threads create orders.
+ * - BlockingQueue: Stores pending orders.
+ * - Consumers: Worker threads process orders.
+
+ * More usage examples (tasks wait in queue until a thread is available):
+ * - thread pools
+ * - kafka like messaging system
+ * - async processing
+ * - log processing
+ * - image/video processing
  */
 public class ProducerConsumerWithBlockingQueue {
     private static final AtomicInteger counter = new AtomicInteger(1);
