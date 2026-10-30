@@ -3,6 +3,7 @@ package com.saumya.concurrency_problems.producer_consumer;
 import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,8 +40,26 @@ public class ProducerConsumer<E> {
         } finally {
             lock.unlock();
         }
-
     }
+
+    public boolean offer(E item, long timeout, TimeUnit unit) throws InterruptedException {
+        Objects.requireNonNull(item);
+
+        long nanos = unit.toNanos(timeout);
+        lock.lockInterruptibly();
+        try {
+            while (queue.size() == maxCapacity) {
+                if(nanos <= 0) return false; // exit if queue has no space after waiting until timeout
+                nanos = notFull.awaitNanos(nanos); // update remaining time before giving up
+            }
+            queue.add(item);
+            notEmpty.signal();
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
 
     public E get() throws InterruptedException {
         lock.lockInterruptibly();
@@ -57,6 +76,25 @@ public class ProducerConsumer<E> {
             lock.unlock();
         }
     }
+    
+    public E poll(long timeout, TimeUnit unit) throws InterruptedException {
+        long nanos = unit.toNanos(timeout);
+        lock.lockInterruptibly();
+
+        try {
+            while (queue.isEmpty()) {
+                if (nanos <= 0) return null;    // If timeout expires, returns null.
+                nanos = notEmpty.awaitNanos(nanos);
+            }
+
+            E item = queue.remove();
+            notFull.signal();
+            return item;
+        } finally {
+            lock.unlock();
+        }
+    }
+
 
     public static void main(String[] args) throws InterruptedException {
         ProducerConsumer<Integer> pc = new ProducerConsumer<>(3);
@@ -65,8 +103,12 @@ public class ProducerConsumer<E> {
             while (true) {
                 try {
                     int item = counter.getAndIncrement();
-                    System.out.println("Produced: " + item);
-                    pc.put(item);
+                    if (!pc.offer(item, 500, TimeUnit.MILLISECONDS)) {
+                        // null if timeout expires before item is added
+                        System.out.println("Failed to produce: " + item + " (queue full)");
+                    } else {
+                        System.out.println("Produced: " + item);
+                    }
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -81,8 +123,12 @@ public class ProducerConsumer<E> {
         final Runnable consumer = () -> {
             while (true) {
                 try {
-                    Integer item = pc.get();
-                    System.out.println("Consumed: " + item);
+                    Integer item = pc.poll(500, TimeUnit.MILLISECONDS);
+                    if (item == null) { // null if timeout expires before item is available
+                        System.out.println("No item available (timeout)");
+                    } else {
+                        System.out.println("Consumed: " + item);
+                    }
                     Thread.sleep(150);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
