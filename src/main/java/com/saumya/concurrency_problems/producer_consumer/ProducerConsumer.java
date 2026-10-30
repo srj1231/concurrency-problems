@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class ProducerConsumer<E> {
-    private Queue<E> queue;
+    private final Queue<E> queue;
     private int maxCapacity = 16;
 
     public ProducerConsumer(int capacity) {
