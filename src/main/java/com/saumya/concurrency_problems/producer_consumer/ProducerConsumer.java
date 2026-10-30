@@ -20,8 +20,10 @@ public class ProducerConsumer<E> {
     public void put(E item) throws InterruptedException {
         lock.lock();
         try {
-            if(queue.size() == maxCapacity) {
+            while(queue.size() == maxCapacity) {
                 notFull.await(); // blocks the producer thread
+                // problem: two producer threads may wake up and both try to add, leading to an overflow
+                // solution: use a while loop instead of if
             }
             queue.add(item);
         } finally {
@@ -33,8 +35,10 @@ public class ProducerConsumer<E> {
     public E get() throws InterruptedException {
         lock.lock();
         try {
-            if(queue.isEmpty()) {
+            while(queue.isEmpty()) {
                 notEmpty.await();   // blocks the consumer thread
+                // problem: two consumer threads may wake up and both try to poll, leading to a null value
+                // solution: use a while loop instead of if
             }
             return queue.poll();
         } finally {
