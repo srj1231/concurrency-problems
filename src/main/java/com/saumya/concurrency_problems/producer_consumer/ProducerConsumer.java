@@ -1,6 +1,6 @@
 package com.saumya.concurrency_problems.producer_consumer;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,7 +20,7 @@ public class ProducerConsumer<E> {
             throw new IllegalArgumentException("Capacity must be positive");
         }
         this.maxCapacity = capacity;
-        this.queue = new LinkedList<>();
+        this.queue = new ArrayDeque<>(); // ArrayDeque has constant time O(1) for add and remove, low memory overhead
     }
 
     public void put(E item) throws InterruptedException {
@@ -50,7 +50,7 @@ public class ProducerConsumer<E> {
                 // problem: two consumer threads may wake up and both try to poll, leading to a null value
                 // solution: use a while loop instead of if
             }
-            E item = queue.poll();
+            E item = queue.remove(); // remove throws NoSuchElementException if queue is empty
             notFull.signal(); // wakes up a waiting producer thread
             return item;
         } finally {
